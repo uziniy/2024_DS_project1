@@ -172,6 +172,39 @@ private:
         return node;
     }
 
+    // 특정 노드를 삭제하는 재귀 함수
+    SubtitleBSTNode* deleteNode(SubtitleBSTNode* node, const std::string& time) {
+        if (!node) return nullptr;
+
+        if (time < node->time) node->left = deleteNode(node->left, time);
+        else if (time > node->time) node->right = deleteNode(node->right, time);
+        else {
+            if (!node->left) {
+                SubtitleBSTNode* temp = node->right;
+                delete node;
+                return temp;
+            }
+            else if (!node->right) {
+                SubtitleBSTNode* temp = node->left;
+                delete node;
+                return temp;
+            }
+            else {
+                SubtitleBSTNode* temp = findMin(node->right);
+                node->time = temp->time;
+                node->content = temp->content;
+                node->right = deleteNode(node->right, temp->time);
+            }
+        }
+        return node;
+    }
+
+    // 최소값을 찾는 함수
+    SubtitleBSTNode* findMin(SubtitleBSTNode* node) {
+        while (node && node->left) node = node->left;
+        return node;
+    }
+
     // 중위 순회로 BST를 출력하는 재귀 함수
     void inorderPrint(SubtitleBSTNode* node) const {
         if (!node) return;
@@ -217,10 +250,46 @@ public:
         std::cout << "===============\n";
     }
 
+    // 특정 시간과 동일한 자막 삭제
+    void deleteEqualTime(const std::string& time) {
+        if (!deleteNode(root, time)) {
+            std::cout << "===== ERROR =====\n3000\n===============\n";  // 에러 코드 출력
+        }
+    }
+
+    // 특정 시간보다 이전 자막들 삭제
+    void deleteUnderTime(const std::string& time) {
+        if (!root) {
+            std::cout << "===== ERROR =====\n3000\n===============\n";
+            return;
+        }
+        deleteUnder(root, time);
+    }
+
     // 시간 구간 내 자막을 SectionList에 추가하는 함수
     void getSubtitlesInRange(const std::string& startTime, const std::string& endTime, SectionList& sectionList, int sectionNum) const {
         findInRange(root, startTime, endTime, sectionList, sectionNum);
     }
+
+
+    void deleteUnder(SubtitleBSTNode*& node, const std::string& time) {
+        if (!node) return;
+
+        // 왼쪽 서브트리부터 처리
+        deleteUnder(node->left, time);
+
+        // 현재 노드가 삭제 조건에 맞으면 출력 후 삭제
+        if (node->time < time) {
+            std::cout << "Deleting: " << node->time << std::endl;
+            SubtitleBSTNode* temp = node;
+            node = node->right;
+            delete temp;
+
+            // 현재 노드를 갱신한 상태로 다시 deleteUnder 호출
+            deleteUnder(node, time);
+        }
+    }
+
 };
 
 // 프로그램 전체를 관리하는 매니저 클래스
@@ -313,6 +382,23 @@ public:
                     printSection(sectionNum);
                 }
             }
+            else if (command == "DELETE") {
+                std::string condition, time;
+                file >> condition >> time;
+                if (condition == "EQUAL") {
+                    bst.deleteEqualTime(time);  // 특정 시간과 동일한 자막 삭제
+                    std::cout << "DELETE EQUAL - ";
+                    std::cout << time<<std::endl;
+                }
+                else if (condition == "UNDER") {
+                    bst.deleteUnderTime(time);  // 특정 시간보다 이전 자막들 삭제
+                    std::cout << "DELETE UNDER - ";
+                    std::cout << time << std::endl;
+                }
+                else {
+                    std::cout << "===== ERROR =====\n1000\n===============\n";
+                }
+            }
             else {
                 std::cout << "===== ERROR =====\n1000\n===============\n";  // 잘못된 명령어 처리
             }
@@ -326,4 +412,3 @@ int main(int argc, const char* argv[]) {
     manager.executeCommands("command.txt");  // command.txt 파일에서 명령어 실행
     return 0;  // 프로그램 종료
 }
-
