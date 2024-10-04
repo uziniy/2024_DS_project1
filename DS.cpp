@@ -140,6 +140,11 @@ public:
         }
         std::cout << "===============\n";
     }
+
+    // getter 함수: SectionList의 head 노드 반환
+    SectionListNode* getHead() const {
+        return head;
+    }
 };
 
 // 자막 정보를 저장하는 BST 노드 클래스
@@ -271,25 +276,25 @@ public:
         findInRange(root, startTime, endTime, sectionList, sectionNum);
     }
 
-
+    // 특정 시간보다 이전의 모든 노드를 삭제하는 함수
     void deleteUnder(SubtitleBSTNode*& node, const std::string& time) {
         if (!node) return;
 
-        // 왼쪽 서브트리부터 처리
-        deleteUnder(node->left, time);
-
-        // 현재 노드가 삭제 조건에 맞으면 출력 후 삭제
-        if (node->time < time) {
-            std::cout << "Deleting: " << node->time << std::endl;
-            SubtitleBSTNode* temp = node;
-            node = node->right;
-            delete temp;
-
-            // 현재 노드를 갱신한 상태로 다시 deleteUnder 호출
+        if (node->time < time) {  // 특정 시간보다 이전인 경우
+            SubtitleBSTNode* temp = node;  // 현재 노드를 임시 저장
+            node = node->right;  // 현재 노드의 오른쪽 자식으로 이동
             deleteUnder(node, time);
+            delete temp;
+        }
+        else {
+            deleteUnder(node->left, time);  // 왼쪽 서브 트리 방문하여 삭제 진행
         }
     }
 
+    // getter 함수: BST의 root 노드 반환
+    SubtitleBSTNode* getRoot() const {
+        return root;
+    }
 };
 
 // 프로그램 전체를 관리하는 매니저 클래스
@@ -298,6 +303,45 @@ private:
     SubtitleQueue queue;  // 자막 큐 객체 생성
     SubtitleBST bst;  // 자막 BST 객체 생성
     SectionList sectionList;  // 섹션 리스트 객체 생성
+
+    // 메모리를 해제하는 함수
+    void freeMemory() {
+        // SubtitleQueue의 모든 노드 해제
+        while (!queue.isEmpty()) {
+            SubtitleQueueNode* node = queue.pop();
+            delete node;
+        }
+
+        // SubtitleBST의 모든 노드 해제
+        freeBST(bst.getRoot());
+
+        // SectionList의 모든 노드 해제
+        freeSectionList(sectionList.getHead());
+    }
+
+    // SubtitleBST의 모든 노드를 재귀적으로 해제하는 함수
+    void freeBST(SubtitleBSTNode* node) {
+        if (!node) return;
+        freeBST(node->left);
+        freeBST(node->right);
+        delete node;
+    }
+
+    // SectionList의 모든 노드를 해제하는 함수
+    void freeSectionList(SectionListNode* head) {
+        SectionListNode* currentSection = head;
+        while (currentSection) {
+            SubtitleListNode* currentSubtitle = currentSection->subtitleHead;
+            while (currentSubtitle) {
+                SubtitleListNode* tempSubtitle = currentSubtitle;
+                currentSubtitle = currentSubtitle->next;
+                delete tempSubtitle;
+            }
+            SectionListNode* tempSection = currentSection;
+            currentSection = currentSection->next;
+            delete tempSection;
+        }
+    }
 
 public:
     // LOAD 명령을 처리하는 함수
@@ -387,17 +431,18 @@ public:
                 file >> condition >> time;
                 if (condition == "EQUAL") {
                     bst.deleteEqualTime(time);  // 특정 시간과 동일한 자막 삭제
-                    std::cout << "DELETE EQUAL - ";
-                    std::cout << time<<std::endl;
                 }
                 else if (condition == "UNDER") {
                     bst.deleteUnderTime(time);  // 특정 시간보다 이전 자막들 삭제
-                    std::cout << "DELETE UNDER - ";
-                    std::cout << time << std::endl;
                 }
                 else {
                     std::cout << "===== ERROR =====\n1000\n===============\n";
                 }
+            }
+            else if (command == "EXIT") {
+                freeMemory();  // 모든 메모리 해제
+                std::cout << "===== EXIT =====\nSuccess\n===============\n";
+                break;  // 프로그램 종료
             }
             else {
                 std::cout << "===== ERROR =====\n1000\n===============\n";  // 잘못된 명령어 처리
